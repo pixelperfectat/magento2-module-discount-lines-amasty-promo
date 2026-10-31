@@ -8,3 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Gift line for Amasty Free Gift coupons (`ampromo_*` rules); automatic gifts produce no line.
+
+### Changed
+
+- A gift coupon that Amasty books as a 100 % item discount is a `gift` line that keeps its amount.

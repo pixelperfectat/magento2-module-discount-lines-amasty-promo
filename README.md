@@ -37,6 +37,42 @@ The module adjusts two resolvers of the base module's composite:
 Automatic gift rules (no coupon) keep their `automatic` line with the store label when they discount something, and
 produce no line otherwise. Non-gift coupons are untouched.
 
+## Configuration
+
+Configured in the base package under Stores > Configuration > Sales > Discount Lines (store-view scope):
+`pp_discount_lines/general/enabled` (default `1`) and `pp_discount_lines/display/variant` (`A` to `D`, default `B`).
+See the [base README](https://github.com/pixelperfectat/magento2-module-discount-lines#configuration) for the full table.
+
+## Contract
+
+The data this package renders (`extension_attributes.discount_lines`, row data key `discount_line`, the label rule
+and the line kinds) is described in the
+[contract section of the base README](https://github.com/pixelperfectat/magento2-module-discount-lines#contract-with-the-sales-email-module).
+
+## Known limits
+
+- Orders placed before the base module was installed keep the merged core row.
+- Existing carts show the core row until the next totals collect.
+- If a gift is auto-added during a collect, core has no per-rule breakdown for it yet, so that collect shows the
+  plain core row until the next collect.
+- The gift attributor over-attributes when an automatic rule also discounts the gift item (the sum is unchanged).
+  Recommendation: add the Amasty condition "is promo item = No" to your automatic rules.
+- Two gift coupon rules on one item fall back to the core row.
+- See the base README for the complete list of known limits.
+
+## Compatibility
+
+Tested with `amasty/promo` 2.17.5. On Mage-OS 3.x with Symfony 7 and recent PHP, some Amasty vendor packages need small
+patches (console command return types); this package does not ship such patches.
+
+## Screenshots
+
+Placeholder data only, in `docs/screenshots/`:
+
+![Gift coupon in the cart](docs/screenshots/gift-coupon-hyva-cart.jpg)
+
+![Gift coupon in the checkout](docs/screenshots/gift-coupon-hyva-checkout.jpg)
+
 ## Development
 
 ```bash
@@ -46,4 +82,4 @@ composer check
 
 ## License
 
-MIT
+MIT, see `LICENSE`.
