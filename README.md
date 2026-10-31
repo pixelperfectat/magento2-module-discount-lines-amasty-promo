@@ -1,8 +1,11 @@
 # Discount Lines for Amasty Free Gift
 
 Adapter for [`pixelperfectat/magento2-module-discount-lines`](https://github.com/pixelperfectat/magento2-module-discount-lines):
-an Amasty Free Gift coupon appears as a **gift line** ("Gift" in place of an amount) on the cart, in the checkout,
-on the order and in the sales emails and documents.
+an Amasty Free Gift coupon appears as a **gift line** on the cart, in the checkout, on the order and in the sales
+emails and documents. When Amasty books the gift as an item discount (auto-add, the normal configuration) the line
+keeps its amount ("Gift: CODE −8.00"), so the lines always add up to Magento's discount; "Gift" stands in place of an
+amount only when the gift carries no money (coupon applied, gift not in the cart yet). An automatic gift rule without
+money produces no line; one with money stays an `automatic` line.
 
 ## Requirements
 
@@ -58,6 +61,12 @@ and the line kinds) is described in the
 - The gift attributor over-attributes when an automatic rule also discounts the gift item (the sum is unchanged).
   Recommendation: add the Amasty condition "is promo item = No" to your automatic rules.
 - Two gift coupon rules on one item fall back to the core row.
+- Shipping label: core appends the discount description (the rule description) to the shipping row label of a
+  document that has no discount row and no coupon code (`Magento\Sales\Block\Order\Totals::addShippingTotal`), for
+  example the invoice of a gift coupon order whose gift carries no money: "Shipping & Handling (<rule description>)".
+  It was first seen in the lab with Amasty's "apply shipping" option on, but the source is core, not Amasty. The base
+  package (since this release) restores the plain "Shipping & Handling" label while it is enabled; with an older base
+  package, give gift rules an empty description.
 - See the base README for the complete list of known limits.
 
 ## Compatibility
