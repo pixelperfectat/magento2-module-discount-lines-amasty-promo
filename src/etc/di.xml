@@ -4,6 +4,15 @@
     <preference for="PixelPerfect\DiscountLinesAmastyPromo\Api\Service\GiftRuleMatcherInterface"
                 type="PixelPerfect\DiscountLinesAmastyPromo\Service\GiftRuleMatcher"/>
 
+    <type name="PixelPerfect\DiscountLines\Service\Resolver\RuleDiscountResolver">
+        <arguments>
+            <argument name="attributors" xsi:type="array">
+                <item name="amasty_gift" xsi:type="object">
+                    PixelPerfect\DiscountLinesAmastyPromo\Service\GiftItemRuleAttributor
+                </item>
+            </argument>
+        </arguments>
+    </type>
     <type name="PixelPerfect\DiscountLinesAmastyPromo\Service\Resolver\GiftCouponLineResolver">
         <arguments>
             <argument name="inner" xsi:type="object">
