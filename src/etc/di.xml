@@ -13,6 +13,13 @@
             </argument>
         </arguments>
     </type>
+    <type name="PixelPerfect\DiscountLinesAmastyPromo\Service\Resolver\AmastyGiftResolver">
+        <arguments>
+            <argument name="attributor" xsi:type="object">
+                PixelPerfect\DiscountLinesAmastyPromo\Service\GiftItemRuleAttributor
+            </argument>
+        </arguments>
+    </type>
     <type name="PixelPerfect\DiscountLinesAmastyPromo\Service\Resolver\GiftCouponLineResolver">
         <arguments>
             <argument name="inner" xsi:type="object">

@@ -16,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 use PixelPerfect\DiscountLines\Api\Data\DiscountLineInterface;
 use PixelPerfect\DiscountLines\Api\Service\LabelResolverInterface;
 use PixelPerfect\DiscountLines\Api\Service\RuleLoaderInterface;
+use PixelPerfect\DiscountLinesAmastyPromo\Service\GiftItemRuleAttributor;
 use PixelPerfect\DiscountLinesAmastyPromo\Service\GiftRuleMatcher;
 use PixelPerfect\DiscountLinesAmastyPromo\Service\Resolver\AmastyGiftResolver;
 
@@ -34,7 +35,14 @@ class AmastyGiftResolverTest extends TestCase
                 ? ['kind' => 'automatic', 'code' => null, 'label' => 'Store label']
                 : ['kind' => 'coupon', 'code' => $coupon, 'label' => (string)$coupon]
         );
-        $this->resolver = new AmastyGiftResolver($this->ruleLoader, $this->labelResolver, new GiftRuleMatcher());
+        $this->resolver = $this->newResolver($this->ruleLoader, $this->labelResolver);
+    }
+
+    private function newResolver(RuleLoaderInterface $loader, LabelResolverInterface $labels): AmastyGiftResolver
+    {
+        $matcher = new GiftRuleMatcher();
+
+        return new AmastyGiftResolver($loader, $labels, $matcher, new GiftItemRuleAttributor($loader, $matcher));
     }
 
     private function rule(string $action, int $couponType): Rule
@@ -120,13 +128,12 @@ class AmastyGiftResolverTest extends TestCase
     {
         $actions = ['ampromo_items', 'ampromo_cart', 'ampromo_spent', 'ampromo_product', 'ampromo_eachn'];
         foreach ($actions as $action) {
-            $resolver = new AmastyGiftResolver(
+            $resolver = $this->newResolver(
                 $this->createConfiguredMock(
                     RuleLoaderInterface::class,
                     ['load' => $this->rule($action, Rule::COUPON_TYPE_SPECIFIC)]
                 ),
-                $this->labelResolver,
-                new GiftRuleMatcher()
+                $this->labelResolver
             );
             $this->assertCount(1, $resolver->resolve($this->address('11'), $this->quote('FREEBIE')), $action);
         }
@@ -184,6 +191,24 @@ class AmastyGiftResolverTest extends TestCase
         $item->method('getExtensionAttributes')->willReturn(null);
 
         $this->assertSame([], $this->resolver->resolve($this->address('11', [], [$item]), $this->quote('FREEBIE')));
+    }
+
+    public function testNoDuplicateWhenGiftItemWithSeveralRulesHasNoBreakdown(): void
+    {
+        $this->loadRules([
+            2 => $this->rule('by_percent', Rule::COUPON_TYPE_NO_COUPON),
+            11 => $this->rule('ampromo_items', Rule::COUPON_TYPE_SPECIFIC),
+        ]);
+        $item = $this->getMockBuilder(Item::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getExtensionAttributes'])
+            ->addMethods(['getDiscountAmount', 'getAppliedRuleIds'])
+            ->getMock();
+        $item->method('getDiscountAmount')->willReturn(13.6);
+        $item->method('getAppliedRuleIds')->willReturn('2,11');
+        $item->method('getExtensionAttributes')->willReturn(null);
+
+        $this->assertSame([], $this->resolver->resolve($this->address('2,11', [], [$item]), $this->quote('FREEBIE')));
     }
 
     public function testChildItemDiscountIsIgnored(): void
