@@ -1,0 +1,18 @@
+{
+    "$schema": "vendor/infection/infection/resources/schema.json",
+    "source": {
+        "directories": [
+            "src/Api",
+            "src/Service"
+        ]
+    },
+    "mutators": {
+        "@default": true
+    },
+    "minMsi": 85,
+    "minCoveredMsi": 90,
+    "testFramework": "phpunit",
+    "logs": {
+        "text": "var/infection.log"
+    }
+}
