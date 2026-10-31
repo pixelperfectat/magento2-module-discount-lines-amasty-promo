@@ -13,29 +13,29 @@ use PixelPerfect\DiscountLines\Api\Service\DiscountLineResolverInterface;
 use PixelPerfect\DiscountLines\Api\Service\LabelResolverInterface;
 use PixelPerfect\DiscountLines\Api\Service\RuleLoaderInterface;
 use PixelPerfect\DiscountLines\Model\Data\DiscountLine;
+use PixelPerfect\DiscountLinesAmastyPromo\Api\Service\GiftRuleMatcherInterface;
 
 /**
  * Turns an applied Amasty Free Gift coupon into a `gift` discount line (amount 0, shown as "Gift").
  *
  * Automatic gift rules (no coupon) produce no line. Only the rule's `simple_action` string is read, so no class of
- * the Amasty package is required. A gift rule that also discounts an item (gift priced below 100 %) already has a
- * money line from the rule resolver; it gets no second, gift line.
+ * the Amasty package is required. This resolver covers the zero-amount case (coupon applied, no gift item in the
+ * cart yet). When the gift rule already has a money line (gift item discounted), no second line is added; that line
+ * is typed `gift` by {@see GiftCouponLineResolver}.
  */
 class AmastyGiftResolver implements DiscountLineResolverInterface
 {
-    public const ACTION_PREFIX = 'ampromo_';
-
     private const EPSILON = 0.00001;
 
     /**
      * @param RuleLoaderInterface $ruleLoader
      * @param LabelResolverInterface $labelResolver
-     * @param string $actionPrefix Prefix of the sales rule actions that add gifts
+     * @param GiftRuleMatcherInterface $matcher
      */
     public function __construct(
         private readonly RuleLoaderInterface $ruleLoader,
         private readonly LabelResolverInterface $labelResolver,
-        private readonly string $actionPrefix = self::ACTION_PREFIX
+        private readonly GiftRuleMatcherInterface $matcher
     ) {
     }
 
@@ -55,7 +55,7 @@ class AmastyGiftResolver implements DiscountLineResolverInterface
         $lines = [];
         foreach ($ruleIds as $ruleId) {
             $rule = $this->ruleLoader->load($ruleId);
-            if ($rule === null || !$this->isGiftCouponRule($rule) || isset($moneyRuleIds[$ruleId])) {
+            if ($rule === null || !$this->matcher->isGiftCouponRule($rule) || isset($moneyRuleIds[$ruleId])) {
                 continue;
             }
             $resolved = $this->labelResolver->resolve($rule, $couponCode, (int)$quote->getStoreId());
@@ -71,18 +71,6 @@ class AmastyGiftResolver implements DiscountLineResolverInterface
         }
 
         return $lines;
-    }
-
-    /**
-     * Whether the rule is a gift rule that is triggered by a coupon.
-     *
-     * @param Rule $rule
-     * @return bool
-     */
-    private function isGiftCouponRule(Rule $rule): bool
-    {
-        return (int)$rule->getCouponType() !== Rule::COUPON_TYPE_NO_COUPON
-            && str_starts_with((string)$rule->getSimpleAction(), $this->actionPrefix);
     }
 
     /**
@@ -105,6 +93,9 @@ class AmastyGiftResolver implements DiscountLineResolverInterface
         }
 
         foreach ($address->getAllItems() as $item) {
+            if ($this->isChild($item)) {
+                continue;
+            }
             $ruleId = $this->soleRuleOfItemWithoutBreakdown($item);
             if ($ruleId !== null) {
                 $result[$ruleId] = true;
@@ -134,5 +125,18 @@ class AmastyGiftResolver implements DiscountLineResolverInterface
         $ruleIds = array_unique(array_filter(array_map('intval', explode(',', (string)$item->getAppliedRuleIds()))));
 
         return count($ruleIds) === 1 ? (int)reset($ruleIds) : null;
+    }
+
+    /**
+     * Whether the item is a child of a composite item (the parent carries the discount).
+     *
+     * @param AbstractItem $item
+     * @return bool
+     */
+    private function isChild(AbstractItem $item): bool
+    {
+        // getParentItem() is documented as non-null but returns null for top-level items.
+        // @phpstan-ignore-next-line
+        return $item->getParentItem() !== null;
     }
 }

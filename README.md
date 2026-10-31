@@ -19,21 +19,23 @@ bin/magento setup:upgrade
 
 ## How it works
 
-The module adds one resolver (`amasty_promo`) to the base module's composite resolver. For a quote with a coupon it
-looks at the applied sales rules and returns a `gift` line (amount 0, code and label = the coupon) for each rule that
+Amasty books a gift as a sales rule action (`ampromo_items`, `ampromo_cart`, `ampromo_spent`, `ampromo_product`,
+`ampromo_eachn`): the gift product is added to the cart and discounted by the rule (normally 100 %), so Magento
+reports a money discount for the rule. Rules are identified only by the action prefix (`ampromo_`, a constructor
+argument of `GiftRuleMatcher`); no Amasty class is used.
 
-- needs a coupon, and
-- has a `simple_action` starting with `ampromo_` (`ampromo_items`, `ampromo_cart`, `ampromo_spent`,
-  `ampromo_product`, `ampromo_eachn`).
+The module adjusts two resolvers of the base module's composite:
 
-Rules are only identified by this action string; no Amasty class is used.
+- **`rule_discounts` is replaced by `GiftCouponLineResolver`**, a wrapper around the base rule resolver. The line of a
+  gift rule that needs a coupon becomes kind `gift` (code and label = the coupon) and keeps its amount, so the lines
+  still add up to the cart discount. The renderers show "Gift" only for an amount of 0 and the amount otherwise; documents
+  print "Gift: CODE" with the amount.
+- **`amasty_promo` (`AmastyGiftResolver`)** covers the case without a money discount: the coupon is applied but the
+  gift is not in the cart yet (for example the customer still has to pick it). It returns a `gift` line with amount 0.
+  It adds nothing when the rule already has a money line.
 
-- **Automatic gift rules** (no coupon) produce no line.
-- **Non-gift coupons** are ignored.
-- **No duplicates:** when the gift rule also discounts an item (a gift priced below 100 % is booked as a discount),
-  the money line of the base module already represents the rule and no gift line is added.
-
-The action prefix is a constructor argument of `AmastyGiftResolver` and can be changed in `di.xml`.
+Automatic gift rules (no coupon) keep their `automatic` line with the store label when they discount something, and
+produce no line otherwise. Non-gift coupons are untouched.
 
 ## Development
 

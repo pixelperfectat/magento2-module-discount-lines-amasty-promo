@@ -1,9 +1,23 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <preference for="PixelPerfect\DiscountLinesAmastyPromo\Api\Service\GiftRuleMatcherInterface"
+                type="PixelPerfect\DiscountLinesAmastyPromo\Service\GiftRuleMatcher"/>
+
+    <type name="PixelPerfect\DiscountLinesAmastyPromo\Service\Resolver\GiftCouponLineResolver">
+        <arguments>
+            <argument name="inner" xsi:type="object">
+                PixelPerfect\DiscountLines\Service\Resolver\RuleDiscountResolver
+            </argument>
+        </arguments>
+    </type>
     <type name="PixelPerfect\DiscountLines\Service\Resolver\CompositeResolver">
         <arguments>
             <argument name="resolvers" xsi:type="array">
+                <!-- Replaces the base rule resolver by a wrapper that types gift coupon rules as gift lines. -->
+                <item name="rule_discounts" xsi:type="object">
+                    PixelPerfect\DiscountLinesAmastyPromo\Service\Resolver\GiftCouponLineResolver
+                </item>
                 <item name="amasty_promo" xsi:type="object">
                     PixelPerfect\DiscountLinesAmastyPromo\Service\Resolver\AmastyGiftResolver
                 </item>

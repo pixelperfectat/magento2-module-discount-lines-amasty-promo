@@ -16,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 use PixelPerfect\DiscountLines\Api\Data\DiscountLineInterface;
 use PixelPerfect\DiscountLines\Api\Service\LabelResolverInterface;
 use PixelPerfect\DiscountLines\Api\Service\RuleLoaderInterface;
+use PixelPerfect\DiscountLinesAmastyPromo\Service\GiftRuleMatcher;
 use PixelPerfect\DiscountLinesAmastyPromo\Service\Resolver\AmastyGiftResolver;
 
 class AmastyGiftResolverTest extends TestCase
@@ -33,7 +34,7 @@ class AmastyGiftResolverTest extends TestCase
                 ? ['kind' => 'automatic', 'code' => null, 'label' => 'Store label']
                 : ['kind' => 'coupon', 'code' => $coupon, 'label' => (string)$coupon]
         );
-        $this->resolver = new AmastyGiftResolver($this->ruleLoader, $this->labelResolver);
+        $this->resolver = new AmastyGiftResolver($this->ruleLoader, $this->labelResolver, new GiftRuleMatcher());
     }
 
     private function rule(string $action, int $couponType): Rule
@@ -124,7 +125,8 @@ class AmastyGiftResolverTest extends TestCase
                     RuleLoaderInterface::class,
                     ['load' => $this->rule($action, Rule::COUPON_TYPE_SPECIFIC)]
                 ),
-                $this->labelResolver
+                $this->labelResolver,
+                new GiftRuleMatcher()
             );
             $this->assertCount(1, $resolver->resolve($this->address('11'), $this->quote('FREEBIE')), $action);
         }
@@ -182,6 +184,24 @@ class AmastyGiftResolverTest extends TestCase
         $item->method('getExtensionAttributes')->willReturn(null);
 
         $this->assertSame([], $this->resolver->resolve($this->address('11', [], [$item]), $this->quote('FREEBIE')));
+    }
+
+    public function testChildItemDiscountIsIgnored(): void
+    {
+        $this->loadRules([11 => $this->rule('ampromo_items', Rule::COUPON_TYPE_SPECIFIC)]);
+        $item = $this->getMockBuilder(Item::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getExtensionAttributes', 'getParentItem'])
+            ->addMethods(['getDiscountAmount', 'getAppliedRuleIds'])
+            ->getMock();
+        $item->method('getDiscountAmount')->willReturn(4.0);
+        $item->method('getAppliedRuleIds')->willReturn('11');
+        $item->method('getExtensionAttributes')->willReturn(null);
+        $item->method('getParentItem')->willReturn($this->createMock(Item::class));
+
+        $lines = $this->resolver->resolve($this->address('11', [], [$item]), $this->quote('FREEBIE'));
+
+        $this->assertCount(1, $lines);
     }
 
     public function testMoneyDiscountOfAnotherRuleDoesNotSuppressGiftLine(): void
