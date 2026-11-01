@@ -14,7 +14,7 @@
     "require-dev": {
         "infection/infection": "^0.35",
         "phpunit/phpunit": "^9.6",
-        "pixelperfectat/coding-standard": "^0.1.0"
+        "pixelperfectat/coding-standard": "^0.2.1"
     },
     "suggest": {
         "amasty/promo": "Amasty Free Gift (commercial); the adapter only reads the sales rule action and needs no class of it"
