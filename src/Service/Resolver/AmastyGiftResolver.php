@@ -53,12 +53,12 @@ class AmastyGiftResolver implements DiscountLineResolverInterface
         }
 
         $moneyRuleIds = $this->ruleIdsWithItemDiscount($address);
-        $ruleIds = array_unique(array_filter(array_map('intval', explode(',', (string)$address->getAppliedRuleIds()))));
+        $ruleIds = $this->parseRuleIds((string)$address->getAppliedRuleIds());
 
         $lines = [];
         foreach ($ruleIds as $ruleId) {
             $rule = $this->ruleLoader->load($ruleId);
-            if ($rule === null || !$this->matcher->isGiftCouponRule($rule) || isset($moneyRuleIds[$ruleId])) {
+            if ($rule === null || !$this->matcher->isGiftCouponRule($rule) || in_array($ruleId, $moneyRuleIds, true)) {
                 continue;
             }
             $resolved = $this->labelResolver->resolve($rule, $couponCode, (int)$quote->getStoreId());
@@ -80,7 +80,7 @@ class AmastyGiftResolver implements DiscountLineResolverInterface
      * Rules that discount an item by money (the rule resolver then already reports them).
      *
      * @param Address $address
-     * @return array<int, true> rule id => true
+     * @return int[] rule ids
      */
     private function ruleIdsWithItemDiscount(Address $address): array
     {
@@ -91,7 +91,7 @@ class AmastyGiftResolver implements DiscountLineResolverInterface
         $discounts = $extension !== null ? $extension->getDiscounts() : null;
         foreach ((array)$discounts as $discount) {
             if (abs((float)$discount->getDiscountData()->getAmount()) >= self::EPSILON) {
-                $result[(int)$discount->getRuleID()] = true;
+                $result[] = (int)$discount->getRuleID();
             }
         }
 
@@ -101,7 +101,7 @@ class AmastyGiftResolver implements DiscountLineResolverInterface
             }
             $ruleId = $this->ruleOfItemWithoutBreakdown($item);
             if ($ruleId !== null) {
-                $result[$ruleId] = true;
+                $result[] = $ruleId;
             }
         }
 
@@ -125,13 +125,24 @@ class AmastyGiftResolver implements DiscountLineResolverInterface
         if ($itemExtension !== null && $itemExtension->getDiscounts()) {
             return null;
         }
-        $ruleIds = array_unique(array_filter(array_map('intval', explode(',', (string)$item->getAppliedRuleIds()))));
+        $ruleIds = $this->parseRuleIds((string)$item->getAppliedRuleIds());
 
         if (count($ruleIds) === 1) {
-            return (int)reset($ruleIds);
+            return $ruleIds[0];
         }
 
-        return $this->attributor->attribute($item, array_values($ruleIds));
+        return $this->attributor->attribute($item, $ruleIds);
+    }
+
+    /**
+     * Splits a comma separated rule id list into distinct, non-zero ids.
+     *
+     * @param string $appliedRuleIds
+     * @return int[]
+     */
+    private function parseRuleIds(string $appliedRuleIds): array
+    {
+        return array_values(array_unique(array_filter(array_map('intval', explode(',', $appliedRuleIds)))));
     }
 
     /**
