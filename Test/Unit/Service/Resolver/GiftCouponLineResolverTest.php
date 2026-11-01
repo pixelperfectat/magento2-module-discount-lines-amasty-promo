@@ -115,4 +115,61 @@ class GiftCouponLineResolverTest extends TestCase
 
         $this->assertEquals([$line], $this->resolve([$line], null));
     }
+
+    public function testBlankCouponLeavesLinesUntouched(): void
+    {
+        $this->loadRules([11 => $this->rule('ampromo_items', Rule::COUPON_TYPE_SPECIFIC)]);
+        $lines = [
+            new DiscountLine('coupon', 11, 'FREEBIE', 'FREEBIE', 8.0, 8.0, 0),
+            new DiscountLine('automatic', 2, null, 'Sale', 1.0, 1.0, 1),
+        ];
+
+        $this->assertEquals($lines, $this->resolve($lines, '   '));
+    }
+
+    public function testLineWithoutRuleIdIsKept(): void
+    {
+        $line = new DiscountLine('coupon', null, 'FREEBIE', 'FREEBIE', 8.0, 8.0);
+
+        $this->assertEquals([$line], $this->resolve([$line]));
+    }
+
+    public function testNonCouponLineOfGiftRuleIsKept(): void
+    {
+        $this->loadRules([11 => $this->rule('ampromo_items', Rule::COUPON_TYPE_SPECIFIC)]);
+        $line = new DiscountLine('automatic', 11, null, 'Sale', 8.0, 8.0);
+
+        $this->assertEquals([$line], $this->resolve([$line]));
+    }
+
+    public function testUnknownRuleDoesNotStopLaterLines(): void
+    {
+        $this->loadRules([11 => $this->rule('ampromo_items', Rule::COUPON_TYPE_SPECIFIC)]);
+
+        $lines = $this->resolve([
+            new DiscountLine('coupon', 99, 'OTHER', 'OTHER', 1.0, 1.0, 0),
+            new DiscountLine('coupon', 11, 'FREEBIE', 'FREEBIE', 8.0, 8.0, 1),
+        ]);
+
+        $this->assertSame('coupon', $lines[0]->getKind());
+        $this->assertSame('gift', $lines[1]->getKind());
+    }
+
+    public function testLineCodeWinsOverQuoteCoupon(): void
+    {
+        $this->loadRules([11 => $this->rule('ampromo_items', Rule::COUPON_TYPE_SPECIFIC)]);
+
+        $lines = $this->resolve([new DiscountLine('coupon', 11, 'LINECODE', 'Label', 8.0, 8.0)]);
+
+        $this->assertSame('LINECODE', $lines[0]->getCode());
+    }
+
+    public function testQuoteCouponIsUsedWhenLineHasNoCode(): void
+    {
+        $this->loadRules([11 => $this->rule('ampromo_items', Rule::COUPON_TYPE_SPECIFIC)]);
+
+        $lines = $this->resolve([new DiscountLine('coupon', 11, null, 'Label', 8.0, 8.0)], ' FREEBIE ');
+
+        $this->assertSame('FREEBIE', $lines[0]->getCode());
+    }
 }
