@@ -67,5 +67,10 @@
             "type": "composer",
             "url": "https://repo.magento.com/"
         }
-    ]
+    ],
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
+        }
+    }
 }
