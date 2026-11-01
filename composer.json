@@ -45,7 +45,8 @@
             "@lint",
             "@cs",
             "@stan",
-            "@test"
+            "@test",
+            "@infection"
         ]
     },
     "config": {
